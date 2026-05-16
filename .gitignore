@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Local user data / rendered files
+.nextusinger/
+out/
+*.wav
+*.flac
+*.mp3
+
+# Model weights should not be committed
+*.ckpt
+*.pth
+*.pt
+*.onnx
+*.safetensors
