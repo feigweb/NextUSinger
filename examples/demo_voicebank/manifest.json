@@ -1,0 +1,8 @@
+{
+  "name": "Demo Placeholder Singer",
+  "speaker": "Demo",
+  "language": "zh",
+  "sample_rate": 44100,
+  "engine": "openvpi-diffsinger",
+  "note": "This directory contains no real model weights. It exists for import-scanner testing only."
+}

@@ -1,0 +1,24 @@
+{
+  "schema_version": "nextusinger.project.v1",
+  "id": "demo-project",
+  "title": "Hello NextUSinger",
+  "sample_rate": 44100,
+  "tempos": [{ "beat": 0, "bpm": 120 }],
+  "tracks": [
+    {
+      "id": "main-vocal",
+      "name": "Main Vocal",
+      "voicebank_id": null,
+      "notes": [
+        { "id": "n1", "start": 0, "duration": 1, "midi": 60, "lyric": "你", "phonemes": [], "velocity": 1, "tension": 0, "breathiness": 0, "energy": 0, "gender": 0 },
+        { "id": "n2", "start": 1, "duration": 1, "midi": 62, "lyric": "好", "phonemes": [], "velocity": 1, "tension": 0, "breathiness": 0, "energy": 0, "gender": 0 },
+        { "id": "n3", "start": 2, "duration": 1, "midi": 64, "lyric": "世", "phonemes": [], "velocity": 1, "tension": 0, "breathiness": 0, "energy": 0, "gender": 0 },
+        { "id": "n4", "start": 3, "duration": 1.5, "midi": 67, "lyric": "界", "phonemes": [], "velocity": 1, "tension": 0, "breathiness": 0, "energy": 0, "gender": 0 }
+      ],
+      "pitch": [],
+      "mute": false,
+      "solo": false
+    }
+  ],
+  "metadata": {}
+}
