@@ -14,12 +14,30 @@ async function json<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function form<T>(url: string, body: FormData): Promise<T> {
+  const res = await fetch(`${API_BASE}${url}`, {
+    method: 'POST',
+    body,
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText);
+  }
+  return res.json() as Promise<T>;
+}
+
 export function listVoicebanks(): Promise<Voicebank[]> {
   return json('/api/voicebanks');
 }
 
 export function importVoicebank(path: string): Promise<Voicebank> {
   return json('/api/voicebanks/import', { method: 'POST', body: JSON.stringify({ path }) });
+}
+
+export function importVoicebankZip(file: File): Promise<Voicebank> {
+  const body = new FormData();
+  body.append('file', file);
+  return form('/api/voicebanks/import-zip', body);
 }
 
 export function renderProject(project: Project, voicebankId?: string | null) {

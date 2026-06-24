@@ -10,12 +10,13 @@ from .models import VoicebankManifest
 
 APP_DIR = Path(os.environ.get("NEXTUSINGER_HOME", Path.home() / ".nextusinger"))
 VOICEBANK_DIR = APP_DIR / "voicebanks"
+IMPORTED_VOICEBANK_DIR = APP_DIR / "imported_voicebanks"
 RENDER_DIR = APP_DIR / "renders"
 TMP_DIR = APP_DIR / "tmp"
 
 
 def ensure_dirs() -> None:
-    for path in (APP_DIR, VOICEBANK_DIR, RENDER_DIR, TMP_DIR):
+    for path in (APP_DIR, VOICEBANK_DIR, IMPORTED_VOICEBANK_DIR, RENDER_DIR, TMP_DIR):
         path.mkdir(parents=True, exist_ok=True)
 
 

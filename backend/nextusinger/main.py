@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
@@ -19,9 +20,9 @@ from .models import (
     TuneRequest,
     VoicebankImportRequest,
 )
-from .storage import ensure_dirs, list_voicebank_manifests, save_voicebank_manifest
+from .storage import TMP_DIR, ensure_dirs, list_voicebank_manifests, save_voicebank_manifest
 from .synth.engine import render_project
-from .voicebank import scan_voicebank
+from .voicebank import import_voicebank_zip, scan_voicebank
 
 app = FastAPI(title="NextUSinger API", version="0.1.0")
 app.add_middleware(
@@ -51,6 +52,29 @@ def import_voicebank(req: VoicebankImportRequest):
         return manifest
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/voicebanks/import-zip")
+async def import_voicebank_zip_upload(file: UploadFile = File(...)):
+    filename = file.filename or "voicebank.zip"
+    if not filename.lower().endswith(".zip"):
+        raise HTTPException(status_code=400, detail="Only .zip voicebank uploads are supported.")
+
+    ensure_dirs()
+    tmp_path = TMP_DIR / f"voicebank-upload-{uuid.uuid4().hex}.zip"
+
+    try:
+        with tmp_path.open("wb") as out:
+            while chunk := await file.read(1024 * 1024):
+                out.write(chunk)
+
+        manifest = import_voicebank_zip(tmp_path, source_name=filename)
+        save_voicebank_manifest(manifest)
+        return manifest
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    finally:
+        tmp_path.unlink(missing_ok=True)
 
 
 @app.get("/api/voicebanks")
