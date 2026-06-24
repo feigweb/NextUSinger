@@ -3,17 +3,22 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import shutil
+import uuid
+import zipfile
 from pathlib import Path
 from typing import Any
 
 import yaml
 
 from .models import VoicebankKind, VoicebankManifest
+from .storage import IMPORTED_VOICEBANK_DIR, ensure_dirs
 
 MODEL_EXTS = {".ckpt", ".pth", ".pt", ".onnx", ".safetensors"}
 CONFIG_EXTS = {".yaml", ".yml", ".json"}
 DICT_EXTS = {".dict", ".txt", ".csv"}
 AUDIO_EXTS = {".wav", ".flac", ".mp3"}
+IGNORED_ARCHIVE_NAMES = {"__macosx", ".ds_store"}
 
 
 def _slug(text: str) -> str:
@@ -44,6 +49,82 @@ def _flatten_dict(data: dict[str, Any]) -> str:
         else:
             parts.append(f"{key} {value}")
     return " ".join(parts).lower()
+
+
+def _safe_zip_member_path(member_name: str) -> Path:
+    normalized = Path(member_name.replace("\\", "/"))
+    if normalized.is_absolute() or any(part in {"", ".", ".."} for part in normalized.parts):
+        raise ValueError(f"ZIP contains unsafe path: {member_name}")
+    return normalized
+
+
+def _extract_zip_safely(zip_path: Path, target_root: Path) -> Path:
+    ensure_dirs()
+    target_root.mkdir(parents=True, exist_ok=True)
+
+    extract_dir = target_root / f"{_slug(zip_path.stem)}-{uuid.uuid4().hex[:8]}"
+    extract_dir.mkdir(parents=True, exist_ok=False)
+
+    try:
+        with zipfile.ZipFile(zip_path) as archive:
+            members = [member for member in archive.infolist() if not member.is_dir()]
+            if not members:
+                raise ValueError("ZIP is empty or contains no files.")
+
+            for member in members:
+                rel_path = _safe_zip_member_path(member.filename)
+                if rel_path.parts[0].lower() in IGNORED_ARCHIVE_NAMES:
+                    continue
+
+                dest = (extract_dir / rel_path).resolve()
+                if extract_dir.resolve() not in (dest, *dest.parents):
+                    raise ValueError(f"ZIP member escapes target directory: {member.filename}")
+
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                with archive.open(member) as src, dest.open("wb") as out:
+                    shutil.copyfileobj(src, out)
+    except Exception:
+        shutil.rmtree(extract_dir, ignore_errors=True)
+        raise
+
+    return _guess_voicebank_root(extract_dir)
+
+
+def _guess_voicebank_root(extract_dir: Path) -> Path:
+    visible_children = [
+        child
+        for child in extract_dir.iterdir()
+        if child.name.lower() not in IGNORED_ARCHIVE_NAMES and not child.name.startswith(".")
+    ]
+
+    if len(visible_children) == 1 and visible_children[0].is_dir():
+        return visible_children[0]
+
+    return extract_dir
+
+
+def import_voicebank_zip(
+    zip_path: str | Path,
+    source_name: str | None = None,
+    target_root: str | Path | None = None,
+) -> VoicebankManifest:
+    """Extract a DiffSinger/OpenVPI voicebank ZIP to server storage and scan it.
+
+    The extractor rejects absolute paths and parent traversal to avoid ZIP-slip.
+    """
+    zip_file = Path(zip_path).expanduser().resolve()
+    if not zip_file.exists() or zip_file.suffix.lower() != ".zip":
+        raise FileNotFoundError(f"Voicebank ZIP does not exist or is not a .zip file: {zip_file}")
+
+    base = Path(target_root).expanduser().resolve() if target_root else IMPORTED_VOICEBANK_DIR
+    scan_root = _extract_zip_safely(zip_file, base)
+    manifest = scan_voicebank(scan_root)
+    manifest.raw_metadata["nextusinger_import"] = {
+        "source": "zip",
+        "source_name": source_name or zip_file.name,
+        "extracted_root": str(scan_root),
+    }
+    return manifest
 
 
 def scan_voicebank(root: str | Path) -> VoicebankManifest:
